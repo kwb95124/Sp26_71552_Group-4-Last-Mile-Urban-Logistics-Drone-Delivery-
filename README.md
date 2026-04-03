@@ -5,7 +5,7 @@
 # Team Members:
 Guy Myer  
 David Moreno  
-Mariana Munoz: https://github.com/Mariana-Munoz-70445 
+Mariana Munoz 
 Nadia Nazeem  
 Kevin Behlke  
 
