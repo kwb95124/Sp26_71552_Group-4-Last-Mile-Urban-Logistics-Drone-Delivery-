@@ -5,7 +5,7 @@
 # Team Members:
 Guy Myer  
 David Moreno  
-Mariana Munoz 
+Mariana Munoz                      
 Nadia Nazeem  
 Kevin Behlke  
 
