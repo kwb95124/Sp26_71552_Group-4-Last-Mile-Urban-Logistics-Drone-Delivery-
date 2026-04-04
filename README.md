@@ -3,11 +3,15 @@
 # Urban Logistics: Drone Delivery System
 
 # Team Members:
-Guy Myer  
-David Moreno  
-Mariana Munoz                      
-Nadia Nazeem  
-Kevin Behlke  
+Guy Mayer: https://github.com/guymayer1/drone  
+
+David Moreno: https://github.com/dmon67854
+
+Mariana Munoz: https://github.com/Mariana-Munoz-70445 
+
+Nadia Nazeem: https://github.com/nadianaz07 
+
+Kevin Behlke: https://github.com/kwb95124
 
 
 # Project Overview
@@ -24,6 +28,14 @@ The primary focus of this system is:
 - Route optimization  
 
 Our goal is to design a system that keeps drone delivery operations efficient, safe, and scalable by enforcing key constraints such as drone status validation, maintenance tracking, and charging station limitations.
+
+# Business Rules
+
+The system enforces the following rules:
+
+1. Drones must have a valid status (In-Flight, Charging, Maintenance) before being assigned to a trip.  
+2. Maintenance logs must be created when a drone exceeds 50 flight hours.  
+3. Charging stations can only serve one drone at a time, with start and end times recorded.
 
 
 # Data Model
@@ -42,25 +54,59 @@ Shipping destinations are connected to packages to represent delivery endpoints,
 The model also supports key operational constraints. Charging stations and charging sessions track when and where drones are charging, ensuring that only one drone occupies a station at a given time. In addition, maintenance logs track drone usage and enforce servicing once flight-hour thresholds are exceeded. These constraints help maintain safety and prevent operational conflicts.
 
 
-# Business Rules
-
-The system enforces the following rules:
-
-1. Drones must have a valid status (In-Flight, Charging, Maintenance) before being assigned to a trip.  
-2. Maintenance logs must be created when a drone exceeds 50 flight hours.  
-3. Charging stations can only serve one drone at a time, with start and end times recorded.
-
 # Data Dictionary
+[Mist 4610 data dict.pdf](https://github.com/user-attachments/files/26470808/Mist.4610.data.dict.pdf)
+<img width="846" height="927" alt="image" src="https://github.com/user-attachments/assets/3232a2d6-6118-489d-b2f4-c679b631c3e4" />
+<img width="845" height="929" alt="image" src="https://github.com/user-attachments/assets/7f350c78-993f-4760-b760-274e2067823f" />
+<img width="809" height="882" alt="image" src="https://github.com/user-attachments/assets/9625a715-4f4a-4bad-a760-15ca047c8301" />
+<img width="734" height="935" alt="image" src="https://github.com/user-attachments/assets/0f927258-f264-491e-ad57-b7d7d8625ad3" />
+<img width="734" height="911" alt="image" src="https://github.com/user-attachments/assets/814b5fc8-cd16-4d5d-9ab4-07ad5c40ab7a" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Query Feature Coverage Matrix
+
+| Query | Description | JOIN | LEFT JOIN | RIGHT JOIN | Aggregate Functions | GROUP BY | HAVING | CASE | Subquery | EXISTS / NOT EXISTS | ORDER BY |
+|------|-------------|------|-----------|------------|---------------------|----------|--------|------|----------|----------------------|----------|
+| TP_Q1 | Drone and status | | | | | | | | | | |
+| TP_Q2 | Drones needing maintenance (> 50 hours) | | | | | | | | | | |
+| TP_Q3 | Packages assigned to trips | X | | | | | | | | | |
+| TP_Q4 | Total distance per drone | | | | X (`SUM`) | X | | | | | |
+| TP_Q5 | In-flight drones with battery condition labels | | | | | | | X | | | |
+| TP_Q6 | Faster-than-average drones with sufficient battery | X | | | X (`AVG`) | X | X | | X | | X |
+| TP_Q7 | Warehouse activity by package count and weight | X | | | X (`COUNT`, `SUM`) | X | X | | | | X |
+| TP_Q8 | Drones with above-average flight hours | | | | X (`AVG`) | | | | X | | |
+| TP_Q9 | Inactive maintenance workers | | | | | | | | | X (`NOT EXISTS`) | |
+| TP_Q10 | Area demand and future drone support | X | X | | X (`COUNT`, `SUM`, `AVG`, `COUNT DISTINCT`) | X | X | X | | | X |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Simple Queries:
-
-## Query for drone models in the Athens area that is AeroX Pro
-
-### Managerial Explanation: This query helps management identify which deliveries in the Athens area are being handled by a specific drone model. This is useful for tracking how certain models are being deployed in different locations, evaluating model performance in a target service area, and supporting decisions about where particular drone types should be used most often.
-
-#### SELECT shipping_destination.destinationAddress, Drone.model FROM Trip JOIN Drone ON Trip.Drone_droneID = Drone.droneID JOIN shipping_destination  ON shipping_destination.Trip_TripID = Trip.TripID WHERE destinationAddress LIKE '%Athens%' and model = "AeroX Pro";
-
-<img width="630" height="126" alt="image" src="https://github.com/user-attachments/assets/04d96ebe-dd93-42c3-b390-49c87ac37051" />
 
 ## Drone and status 
 
@@ -90,28 +136,27 @@ The system enforces the following rules:
 
 <img width="413" height="230" alt="image" src="https://github.com/user-attachments/assets/e0bba2ff-25ff-47ae-9134-513ae0c88e36" />
 
-## Packages with destination
-### Managerial Explanation: This query helps managers track what packages are going to which delivery destinations. It is useful for monitoring delivery patterns, confirming routing accuracy, and understanding customer demand by location. Over time, this can support better route planning and service allocation.
-
-#### SELECT packageID, packageType, weight, destinationAddress FROM Packages JOIN shipping_destination ON Packages.shipping_destination_destinationID = shipping_destination.destinationID;
-
-<img width="580" height="335" alt="image" src="https://github.com/user-attachments/assets/57b459ef-9da2-475f-a3ba-7f28711d1aa6" />
-
 # Complex Queries 
 
 ## Use this to see which drones that are in flight are low on battery (and need to find a charging station soon)
 ### Managerial Explanation: This query helps managers quickly evaluate which active drones are in strong condition and which may need charging soon. Instead of only showing a battery number, it translates battery levels into more practical categories, making it easier to prioritize operational decisions and respond quickly when a drone may need to leave service for charging.
 
-#### SELECT *, CASE 	WHEN battery > 67 THEN "Good to go"       WHEN battery > 33 THEN "Monitor Battery" WHEN battery <= 32 THEN "Charge Soon" END AS BatteryLevel FROM Drone WHERE status = "In-Flight";
+#### SELECT *, CASE     WHEN battery > 67 THEN "Good to go"       WHEN battery > 33 THEN "Monitor Battery" WHEN battery <= 32 THEN "Charge Soon" END AS BatteryLevel FROM Drone WHERE status = "In-Flight";
 
 <img width="872" height="102" alt="image" src="https://github.com/user-attachments/assets/64bd169e-1daa-423f-b661-4983b993598a" />
 
-## This query lists all of the drones, their ids, their current status, their total trips made, and their total distance traveled.
-### Managerial Explanation: This query gives managers a stronger view of drone productivity by combining operational status with trip count and total distance traveled. It helps identify the most heavily used drones, compare fleet performance, and support decisions about workload balancing, resource planning, and maintenance scheduling.
+## This query lists the drone ID, status, facility address, average speed in miles per minute, and current battery level for faster than average drones with a sufficient battery level. 
+### Managerial Explanation: This query is to be used in emergencies, such as same-day-delivery orders or medical emergencies than might need a certain medicine delivered ASAP. It shows managers all the relevant information they might need to decide what drone to use to make those urgent deliveries, such as their battery level and where they're located at the moment. Managers can choose the fastest drone closest to the warehouse where the package is stored to make the delivery.
 
-#### SELECT Drone.droneID, Drone.status AS "CurrentStatus", COUNT(Trip.tripID) AS "TotalTrips", SUM(Trip.tripDistance) AS "TotalDistance" FROM Drone LEFT JOIN Trip ON Drone.droneID = Trip.Drone_droneID GROUP BY Drone.droneID, Drone.status HAVING totalTrips > 0 ORDER BY totalDistance DESC;
+#### SELECT Drone_droneID, Drone.status, facilityAddress, AVG(tripDistance/tripLength) AS avg_drone_mpm, battery
+FROM Drone
+JOIN storage_facility ON facilityID = `Storage Facility_facilityID`
+JOIN Trip ON Drone_droneID = droneID
+WHERE battery > 70
+GROUP BY Drone_droneID, Drone.status, facilityAddress
+HAVING avg_drone_mpm < (SELECT AVG(tripDistance/tripLength) FROM Trip) ORDER BY avg_drone_mpm DESC;
 
-<img width="624" height="264" alt="image" src="https://github.com/user-attachments/assets/b01a1b30-0362-4093-9978-3d42e92d0b70" />
+<img width="803" height="94" alt="image" src="https://github.com/user-attachments/assets/2e8f0c55-e9c0-4117-9a03-25c958359c5a" />
 
 ## This query calculates how many packages each warehouse has handled and the total weight of those packages, then ranks the warehouses from highest to lowest activity, for warehouses that have handled at least one package.
 ### Managerial Explanation: This query helps management evaluate warehouse activity by showing how many packages each warehouse has handled and the total weight processed. It is useful for comparing warehouse workload, identifying high-volume locations, and supporting decisions related to staffing, resource allocation, and operational efficiency.
@@ -127,17 +172,39 @@ The system enforces the following rules:
 
 <img width="250" height="148" alt="image" src="https://github.com/user-attachments/assets/f4282411-8081-460a-9203-cf4e81eecc9f" />
 
-## EXISTS: Find technicians who have performed at least one maintenance job
-### Managerial Explanation:This query helps managers confirm which technicians are actively contributing to maintenance operations. It can be useful for workforce evaluation, staffing reviews, and understanding which personnel are involved in maintaining fleet readiness.
+## NOT EXISTS: Inactive maintenance workers
+### Managerial Explanation: This helps managers identify maintenance workers who haven't operated on any drones in 2026. This will help clear the database of workers who have been laid off but yet removed from the system or who haven't been coming to work.
 
-#### SELECT Technicians.technicianID, Technicians.techniciansFName, Technicians.techniciansLName FROM Technicians WHERE EXISTS (    SELECT * FROM maintenance_logs  WHERE maintenance_logs.Technicians_technicianID = Technicians.technicianID );
+#### SELECT Technicians.technicianID, Technicians.techniciansFName, Technicians.techniciansLName FROM Technicians WHERE NOT EXISTS (SELECT * FROM maintenance_logs WHERE maintenance_logs.Technicians_technicianID = Technicians.technicianID AND maintenanceDate > '2026-01-01 00:00:00');
 
-<img width="430" height="225" alt="image" src="https://github.com/user-attachments/assets/b667a269-68d2-406b-aff1-9cbe3b62db0c" />
+<img width="458" height="117" alt="image" src="https://github.com/user-attachments/assets/f794a8f7-d5aa-463a-9596-5607adba1b5e" />
 
-## Find drones that have at least one trip over 10 miles
-### Managerial Explanation: This query helps managers identify drones that are being used for longer-distance deliveries. This is useful for evaluating route demands, determining which drones are handling more intensive assignments, and assessing whether long-distance trips are being assigned appropriately based on drone capability and battery constraints.
 
-#### SELECT Drone.droneID FROM Drone WHERE EXISTS (    SELECT *     FROM Trip    WHERE Trip.Drone_droneID = Drone.droneID  AND Trip.tripDistance > 10 );
 
-<img width="174" height="286" alt="image" src="https://github.com/user-attachments/assets/736f6748-ae2f-4028-bd26-715ad4d4d793" />
+
+
+## Which areas have the highest delivery demand, how much distance is being covered there, how many drones are serving that area, and which areas may need more drone support in the future?
+### Managerial Explanation: This query helps management see which service areas are busiest, how far drones are traveling in those areas, how many packages are being delivered, and how many drones are currently being used there. It also adds a demand label so managers can quickly spot areas that may need more drone support in the future.
+#### SELECT Route.areaCode, COUNT(Trip.tripID) AS TotalTrips, SUM(Trip.tripDistance) AS TotalDistance, AVG(Trip.tripDistance) AS AvgTripDistance, COUNT(DISTINCT Trip.Drone_droneID) AS DronesUsed, COUNT(Packages.packageID) AS TotalPackages, CASE     WHEN COUNT(Trip.tripID) >= 10 AND COUNT(DISTINCT Trip.Drone_droneID) <= 2 THEN 'Needs More Drones'    WHEN COUNT(Trip.tripID) >= 5 THEN 'Monitor Demand' ELSE 'Current Capacity is Fine' END AS AreaDemandStatus FROM Route LEFT JOIN Trip    ON Route.routeID = Trip.Route_routeID LEFT JOIN Trip_Packages     ON Trip.tripID = Trip_Packages.Trip_TripID LEFT JOIN Packages     ON Trip_Packages.Packages_packageID = Packages.packageID GROUP BY Route.areaCode HAVING COUNT(Trip.tripID) > 0 ORDER BY TotalTrips DESC, TotalDistance DESC;
+
+<img width="817" height="198" alt="image" src="https://github.com/user-attachments/assets/36f17ab2-4086-493f-b7f2-7143e4eb9eaf" />
+
+
+
+# DATA BASE INFORMATION
+## USE ns_Sp26_71552_Group4;
+
+All queries included in this project were implemented as stored procedures in MySQL Workbench and follow the required naming convention:
+
+- `TP_Q1`
+- `TP_Q2`
+- `TP_Q3`
+- `TP_Q4`
+- `TP_Q5`
+- `TP_Q6`
+- `TP_Q7`
+- `TP_Q8`
+- `TP_Q9`
+
+Each stored procedure corresponds to one of the queries presented in this README and was used to support the operational and managerial insights discussed throughout the project.
 
