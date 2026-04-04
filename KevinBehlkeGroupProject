@@ -158,12 +158,68 @@ HAVING avg_drone_mpm < (SELECT AVG(tripDistance/tripLength) FROM Trip) ORDER BY 
 
 <img width="803" height="94" alt="image" src="https://github.com/user-attachments/assets/2e8f0c55-e9c0-4117-9a03-25c958359c5a" />
 
-## This query calculates how many packages each warehouse has handled and the total weight of those packages, then ranks the warehouses from highest to lowest activity, for warehouses that have handled at least one package.
-### Managerial Explanation: This query helps management evaluate warehouse activity by showing how many packages each warehouse has handled and the total weight processed. It is useful for comparing warehouse workload, identifying high-volume locations, and supporting decisions related to staffing, resource allocation, and operational efficiency.
 
-#### SELECT Warehouse.warehouseID, COUNT(Packages.packageID) AS TotalPackagesHandled, SUM(Packages.weight) AS TotalWeightHandled FROM Warehouse JOIN Packages ON Warehouse.warehouseID = Packages.Warehouse_warehouseID GROUP BY Warehouse.warehouseID HAVING COUNT(Packages.packageID) > 0 ORDER BY TotalPackagesHandled DESC;
+## 
 
-<img width="553" height="175" alt="image" src="https://github.com/user-attachments/assets/855c610f-49e0-45a0-a2a6-58c596e3f4c4" />
+###Managerial Explanation: This query helps management evaluate drone performance within each service area by combining trip volume, distance traveled, and relative rankings. It identifies which drones are handling the most workload, compares their performance to others in the same area, and classifies them as overutilized, underutilized, or balanced. This allows managers to better distribute workloads, prevent overuse of specific drones, and plan for future capacity needs in high-demand areas.
+WITH DroneTripStats AS (
+SELECT
+Trip.Drone_droneID,
+Route.areaCode,  
+COUNT(Trip.tripID) AS TotalTrips,
+SUM(Trip.tripDistance) AS TotalDistance,
+AVG(Trip.tripDistance) AS AvgTripDistance
+FROM Trip
+JOIN Route
+ON Trip.Route_routeID = Route.routeID
+GROUP BY Trip.Drone_droneID, Route.areaCode
+),
+
+RankedDrones AS (
+SELECT
+DroneTripStats.*,
+RANK() OVER (PARTITION BY areaCode ORDER BY TotalDistance DESC) AS DroneRank,
+LAG(TotalDistance) OVER (PARTITION BY areaCode ORDER BY TotalDistance DESC) AS PreviousDroneDistance
+FROM DroneTripStats
+),
+
+AreaAverages AS (
+SELECT
+areaCode,
+AVG(TotalDistance) AS AvgAreaDistance
+FROM DroneTripStats
+GROUP BY areaCode
+)
+
+SELECT
+RankedDrones.areaCode,
+RankedDrones.Drone_droneID,
+RankedDrones.TotalTrips,
+RankedDrones.TotalDistance,
+RankedDrones.AvgTripDistance,
+RankedDrones.DroneRank,
+AreaAverages.AvgAreaDistance,
+
+CASE
+WHEN RankedDrones.TotalDistance > AreaAverages.AvgAreaDistance * 1.5 THEN 'Overutilized'
+WHEN RankedDrones.TotalDistance < AreaAverages.AvgAreaDistance * 0.5 THEN 'Underutilized'
+ELSE 'Balanced'
+END AS UsageCategory,
+
+CASE
+WHEN RankedDrones.PreviousDroneDistance IS NULL THEN 'Top Drone'
+WHEN RankedDrones.TotalDistance < RankedDrones.PreviousDroneDistance THEN 'Below Previous'
+ELSE 'Similar Performance'
+END AS PerformanceComparison
+
+FROM RankedDrones
+JOIN AreaAverages
+ON RankedDrones.areaCode = AreaAverages.areaCode
+
+ORDER BY RankedDrones.areaCode, RankedDrones.DroneRank;
+
+
+
 
 ## SUB QUERY: Drones with above average flight hours 
 ### Managerial Explanation: This query helps managers identify drones that are being used more heavily than the rest of the fleet. It is useful for spotting overutilized assets, determining which drones may need closer monitoring, and making better decisions about balancing usage across the fleet.
@@ -207,4 +263,3 @@ All queries included in this project were implemented as stored procedures in My
 - `TP_Q9`
 
 Each stored procedure corresponds to one of the queries presented in this README and was used to support the operational and managerial insights discussed throughout the project.
-
